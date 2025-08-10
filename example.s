@@ -2,7 +2,7 @@
 # Using only basic MIPS I instructions
 .text
 .globl _start
-
+.set noreorder
 _start:
     # Set up condition (1 = true, 0 = false)
     addiu $t0, $zero, 1    # t0 = 0 + 1 (instead of li)
