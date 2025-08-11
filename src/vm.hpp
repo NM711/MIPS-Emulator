@@ -7,18 +7,20 @@
 #include <string>
 #include <vector>
 
+/*
+  Standalone MIPS Core that attempts to remain faithful to the MIPS I spec.
+  Meant to be reusable in the event of emulating other MIPS based systems.
+*/
+
 class VirtualMachine {
 private:
   enum ExtractKind { OP, RS, RT, RD, SHMT, FN, ADDR, IMMD };
-
-  enum ShiftMode { RSHIFT, LSHIFT };
-
-  enum ReadKind { BYTE, HALF_WORD, WORD };
 
   // 32, 32 bit general purpose registers.
   // Register 0, is the null register.
   // Register 31 (32nd element), is the jal register but can also be used for
   // other things.
+  // Register 29 is the SP register, we do not touch it. Programmer sets that.
   std::array<unsigned, 32> registers;
   // MIPS memory is byte addressable max is managed in laad(), 2^32 - 1
   std::vector<unsigned char> memory;
@@ -345,12 +347,32 @@ private:
       break;
     }
 
+      // xori -> 001110
+
+    case 0x0E: {
+      unsigned rs = this->registers.at(this->extract(instruction, RS));
+      short immd = static_cast<short>(extract(instruction, IMMD));
+      this->registers.at(this->extract(instruction, RT)) = rs ^ immd;
+      this->ip += 4;
+      break;
+    }
+
     // ==== R TYPES ====
 
     // All R TYPES start with OP 000000, the actual distinction is made in the 6
     // bit function field in the instruction.
     case 0x0: {
       switch (this->extract(instruction, FN)) {
+        // srav -> 000111
+        // NOTE before implementing digest the difference between srav and srlv
+        // case 0x07: {
+        //   unsigned rs = this->registers.at(this->extract(instruction, RS));
+        //   unsigned rt = this->registers.at(this->extract(instruction, RT));
+        //   this->registers.at(this->extract(instruction, RD)) = rt >> rs;
+        //   this->ip += 4;
+        //   break;
+        // }
+
         // sll -> 000000
 
       case 0x0: {
@@ -409,19 +431,91 @@ private:
 
         break;
       };
+        // addu -> 100001
 
+      case 0x21: {
+        unsigned rs = this->registers.at(this->extract(instruction, RS));
+        unsigned rt = this->registers.at(this->extract(instruction, RT));
+        unsigned sum = rs + rt;
+        this->registers.at(this->extract(instruction, RD)) = sum;
+        this->ip += 4;
+        break;
+      }
         // add -> 100000
 
       case 0x20: {
-        unsigned sum = this->registers.at(this->extract(instruction, RS)) +
-                       this->registers.at(this->extract(instruction, RT));
+        int rs = static_cast<int>(
+            this->registers.at(this->extract(instruction, RS)));
+        int rt = static_cast<int>(
+            this->registers.at(this->extract(instruction, RT)));
+
+        int sum = rs + rt;
+
         this->registers.at(this->extract(instruction, RD)) = sum;
-
-        std::cout << "R TYPE ADD " << std::dec << sum << std::endl;
-
         this->ip += 4;
         break;
       };
+
+        // multu -> 011001
+
+      case 0x19: {
+        unsigned rs = this->registers.at(this->extract(instruction, RS));
+        unsigned rt = this->registers.at(this->extract(instruction, RT));
+
+        // since i have the luxury to do so we will use a long
+        unsigned long result = rs * rt;
+        // Saves higher 32
+        this->hi = (result & 0xFFFFFFFF00000000) >> 32;
+        // Saves lower 32
+        this->lo = (result & 0x00000000FFFFFFFF);
+        this->ip += 4;
+        break;
+      };
+
+        // mult -> 011000
+
+      case 0x18: {
+        // cast rs and rt to signed type save result into a long
+        int rs = static_cast<int>(
+            this->registers.at(this->extract(instruction, RS)));
+        int rt = static_cast<int>(
+            this->registers.at(this->extract(instruction, RT)));
+
+        // since i have the luxury to do so we will use a long
+        long result = rs * rt;
+        // Saves higher 32
+        this->hi = (result & 0xFFFFFFFF00000000) >> 32;
+        // Saves lower 32
+        this->lo = (result & 0x00000000FFFFFFFF);
+        this->ip += 4;
+        break;
+      }
+        // divu -> 011011
+
+      case 0x1B: {
+        unsigned rs = this->registers.at(this->extract(instruction, RS));
+        unsigned rt = this->registers.at(this->extract(instruction, RT));
+
+        this->hi = rs % rt;
+        this->lo = rs / rt;
+        this->ip += 4;
+        break;
+      };
+
+        // div -> 011010
+
+      case 0x1A: {
+        int rs = static_cast<int>(
+            this->registers.at(this->extract(instruction, RS)));
+        int rt = static_cast<int>(
+            this->registers.at(this->extract(instruction, RT)));
+        // Should produce a 32 signed bit result, which should be implicitly
+        // casted to 32 bit unsigned.
+        this->hi = rs % rt;
+        this->lo = rs / rt;
+        this->ip += 4;
+        break;
+      }
 
         // jr -> 001000
       case 0x08:
@@ -455,6 +549,15 @@ private:
         break;
       };
 
+        // nor -> 100111
+      case 0x27: {
+        unsigned rs = this->registers.at(this->extract(instruction, RS));
+        unsigned rt = this->registers.at(extract(instruction, RT));
+        this->registers.at(this->extract(instruction, RD)) = ~(rs | rt);
+        this->ip += 4;
+        break;
+      }
+
         // xor -> 100110
 
       case 0x26: {
@@ -464,6 +567,49 @@ private:
         this->ip += 4;
         break;
       };
+
+        // mtlo -> 010011
+
+      case 0x13: {
+        this->lo = this->registers.at(this->extract(instruction, RS));
+        this->ip += 4;
+        break;
+      };
+
+        // mthi -> 010001
+
+      case 0x11: {
+        this->hi = this->registers.at(this->extract(instruction, RS));
+        this->ip += 4;
+        break;
+      };
+
+        // mfhi -> 010000
+
+      case 0x10: {
+        this->registers.at(this->extract(instruction, RD)) = this->hi;
+        this->ip += 4;
+        break;
+      }
+
+        // mflo -> 010010
+
+      case 0x12: {
+        this->registers.at(this->extract(instruction, RD)) = this->lo;
+        this->ip += 4;
+        break;
+      };
+
+        // syscall -> 001100
+
+      case 0x0C: {
+        // NOTE Add kernel call subroutine here.
+        // NOTE Add kernel call subroutine here.
+        // NOTE Add kernel call subroutine here.
+
+        this->ip += 4;
+        break;
+      }
 
       default:
         std::cout << "Unknown function: " << std::showbase << std::hex
@@ -481,9 +627,13 @@ private:
   };
 
 public:
-  VirtualMachine() {
+  // ip can be set on construction because different systems. May pre allocate
+  // part of an address space. Not all systems start at 0x0
+  // note that we do NOT touch the sp, sp should be determined at runtime. It is
+  // up to the programmoer to determine the call stack size.
+  VirtualMachine(unsigned ip = 0) {
     this->registers.fill(0);
-    this->ip = 0;
+    this->ip = ip;
     this->lo = 0;
     this->hi = 0;
   };
@@ -529,12 +679,6 @@ public:
     };
     std::cout << "(Success) Loaded binary into memory, beginning execution..."
               << std::endl;
-
-    // Initialize the stack pointer
-    // NOTE COME BACK TO THIS LATER TO RE ANALYZE WTF YOUR DOING.
-    // maybe add a param where you can set the static allocation for the stack
-    // size instead of hard coding it.
-    this->registers.at(29) = memory.size() - 1024;
   };
 
   void execute() {
