@@ -26,6 +26,9 @@ else_branch:
 
 end:
     add $t7, $t6, $t0
-    # Infinite loop to end program
-    j end
-    nop                    # Branch delay slot
+    li $v0, 4
+    add $a0, $zero, $t7
+    syscall
+
+    li $v0, 0
+    syscall
