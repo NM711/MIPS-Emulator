@@ -1,9 +1,9 @@
-# Simple MIPS32 program: if condition true add 1+2, else add 5+6
-# Using only basic MIPS I instructions
 .text
 .globl _start
-.set noreorder
+.set noreorder          # Disable assembler reordering
 _start:
+
+    addi $t6, $zero, -100
     # Set up condition (1 = true, 0 = false)
     addiu $t0, $zero, 1    # t0 = 0 + 1 (instead of li)
     
@@ -25,6 +25,7 @@ else_branch:
     add $t3, $t1, $t2      # t3 = 5 + 6 = 11
 
 end:
+    add $t7, $t6, $t0
     # Infinite loop to end program
     j end
     nop                    # Branch delay slot
