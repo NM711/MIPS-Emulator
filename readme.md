@@ -1,12 +1,12 @@
 # MIPS CORE EMULATOR
 
 
-This project is meant be a forkable framework for the emulation of a MIPS based chip implementation.
-I implement most (if not all) MIPS I instructions. Below I will write a table for each instruction I implemented.
+This project is meant to be a forkable framework for the emulation of a MIPS based chip implementation.
+I implement most (if not all) MIPS I instructions. Below, I will write a table for each instruction I implemented.
 
-For me this project is meant to be a base to emulating an R2000 chip, which implements the MIPS I architecture, and other chips aswell.
+For me, this project is meant to be a base to emulate an R2000 chip, which implements the MIPS I architecture, and other chips aswell.
 
-**NOTE**: Make sure the body of the syscall table is replaced with the relevant syscalls for hte system you are attempting to emulate.
+**NOTE**: Make sure the body of the syscall table is replaced with the relevant syscalls for the system you are attempting to emulate.
 I added some basic write and exit, pseudo syscalls for testing purposes.
 
 ### Implemented Instruction Table
@@ -31,6 +31,7 @@ I added some basic write and exit, pseudo syscalls for testing purposes.
 | beq     | 000100 | 000000   | I Type           |                                                                        |
 | bne     | 000101 | 000000   | I Type           |                                                                        |
 | xori    | 001110 | 000000   | I Type           |                                                                        |
+| ori     | 001101 | 000000   | I Type           |                                                                        |
 | sllv    | 000000 | 000100   | R Type           |                                                                        |
 | srlv    | 000000 | 000110   | R Type           |                                                                        |
 | srav    | 000000 | 000111   | R Type           |                                                                        |
