@@ -4,7 +4,7 @@
 int main() {
 	VirtualMachine vm;
 
-	vm.load("./example.bin");
+	vm.load("./example/example.bin");
 	vm.execute();
 
 	return 0;

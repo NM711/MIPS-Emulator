@@ -352,6 +352,16 @@ private:
       break;
     }
 
+      // ori -> 001101
+
+    case 0x0D: {
+      unsigned rs = this->registers.at(this->extract(instruction, RS));
+      short immd = extract(instruction, IMMD);
+      this->registers.at(this->extract(instruction, RT)) = rs | immd;
+      this->ip += 4;
+      break;
+    }
+
       // xori -> 001110
 
     case 0x0E: {
@@ -457,8 +467,7 @@ private:
       case 0x21: {
         unsigned rs = this->registers.at(this->extract(instruction, RS));
         unsigned rt = this->registers.at(this->extract(instruction, RT));
-        unsigned sum = rs + rt;
-        this->registers.at(this->extract(instruction, RD)) = sum;
+        this->registers.at(this->extract(instruction, RD)) = rs + rt;
         this->ip += 4;
         break;
       }
@@ -483,6 +492,33 @@ private:
         this->ip += 4;
         break;
       };
+
+        // sub -> 100010
+
+      case 0x22: {
+        int rs = this->registers.at(this->extract(instruction, RS));
+        int rt = this->registers.at(this->extract(instruction, RT));
+        if ((rs >= 0) && rt > std::numeric_limits<int>::max() - rs) {
+          throw std::runtime_error(
+              "Integer overflow detected while performing an add instruction!");
+        } else if ((rs < 0) && rt < std::numeric_limits<int>::min() - rs) {
+          throw std::runtime_error("Integer underflow detected while "
+                                   "performing an add instruction!");
+        };
+
+        this->registers.at(this->extract(instruction, RD)) = rs - rt;
+        this->ip += 4;
+        break;
+      }
+        // subu -> 100011
+
+      case 0x23: {
+        unsigned rs = this->registers.at(this->extract(instruction, RS));
+        unsigned rt = this->registers.at(this->extract(instruction, RT));
+        this->registers.at(this->extract(instruction, RD)) = rs - rt;
+        this->ip += 4;
+        break;
+      }
 
         // multu -> 011001
 
@@ -553,6 +589,7 @@ private:
         this->registers.at(this->extract(instruction, RD)) = this->ip + 4;
         this->ip = this->registers.at(this->extract(instruction, RS));
         break;
+
         // and -> 100100
 
       case 0x24: {
@@ -631,7 +668,6 @@ private:
         /* NOTE WHEN THIS REPOSITORY GETS FORKED TO BE REPURPOSED FOR A SPECIFIC
            SYSTEM IMPLEMENTATION OVERWRITE THE SYSCALL SWITCH
         */
-
         switch (this->registers.at(2)) {
 
         case 0x00: {
@@ -639,10 +675,28 @@ private:
           exit(1);
           break;
         };
-          // write
+          // write, if a0 = 1 its a literal write, if a0 = 2 its an addressable
+          // write, meaning we point to the dm and read.
         case 0x04: {
-          int arg = this->registers.at(4);
-          std::cout << "SYSCALL WRITE: " << std::dec << arg << std::endl;
+          int writeMode = this->registers.at(4);
+          int arg = this->registers.at(5);
+
+          if (writeMode == 1) {
+            std::cout << std::dec << arg << std::endl;
+          } else if (writeMode == 2) {
+            std::string output = "";
+            for (int i = arg; i < this->memory.size(); i++) {
+              char ch = this->memory.at(i);
+              if (ch == 0) {
+                break;
+              }
+              output += ch;
+            };
+
+            std::cout << output << std::endl;
+          } else {
+            std::cout << "Invalid Write Mode" << std::endl;
+          };
           break;
         }
         default:
