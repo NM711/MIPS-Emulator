@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/4a983855-b881-4d41-8cf2-e0fc1989c2c6
+
 # MIPS CORE EMULATOR
 
 
