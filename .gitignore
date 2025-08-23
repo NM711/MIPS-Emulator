@@ -1,7 +1,4 @@
 main
 *.elf
 *.o
-*.s
-*.ld
 *.bin
-*.sh
